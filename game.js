@@ -211,4 +211,8 @@ export class Game extends Scene {
         this.draw_score_and_darts_left(context, program_state, model_transform);
         this.draw_arsenal(context, program_state, model_transform);
     }
+
+    increase_score(num_points) {
+        this.score += num_points;
+    }
 }
