@@ -241,20 +241,21 @@ export class Game extends Simulation {
 
             if (a.linear_velocity.norm() == 0)
                 continue;
+                
             // *** Collision process is here ***
             // Loop through all bodies again (call each "b"):
-            for (let b of this.bodies) {
+            //for (let b of this.bodies) {
                 // Pass the two bodies and the collision shape to check_if_colliding():
-                if (!a.check_if_colliding(b, collider))
-                    continue;
-                // If we get here, we collided, so turn red and zero out the
-                // velocity so they don't inter-penetrate any further.
-                a.linear_velocity = vec3(0, 0, 0);
-                a.angular_velocity = 0;
-                this.thrown = false;
-                this.num_left -= 1;
-                //this.bodies.pop();
-            }
+            if (!a.check_if_colliding(this.bodies[0], collider))
+                continue;
+            // If we get here, we collided, so turn red and zero out the
+            // velocity so they don't inter-penetrate any further.
+            a.linear_velocity = vec3(0, 0, 0);
+            a.angular_velocity = 0;
+            this.thrown = false;
+            this.num_left -= 1;
+            //this.bodies.pop();
+            //}
         }
     }
 
