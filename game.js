@@ -105,6 +105,7 @@ export class Game extends Simulation {
         this.spin_angle = 0;
         this.num_left = 3;
         this.thrown = false;
+        this.score = 0;
     }
 
     make_control_panel() {
@@ -193,7 +194,7 @@ export class Game extends Simulation {
             .times(Mat4.translation(1.47, -2.22, 0.1))
             .times(Mat4.scale(digit_size, digit_size, digit_size));
 
-        this.shapes.numbers.set_string('999', context.context);
+        this.shapes.numbers.set_string(this.score.toString().padStart(3,'0'), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform1, this.materials.nums_texture);
 
         this.shapes.numbers.set_string(Math.max(this.num_left,0).toString(), context.context);
@@ -289,5 +290,9 @@ export class Game extends Simulation {
         for (let b of this.bodies)
             points.draw(context, program_state, b.drawn_location.times(Mat4.scale(...size)), this.materials.bright, "LINE_STRIP");
 
+    }
+
+    increase_score(num_points) {
+        this.score += num_points;
     }
 }
