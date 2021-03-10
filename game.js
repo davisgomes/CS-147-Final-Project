@@ -95,6 +95,7 @@ export class Game extends Scene {
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
         this.spin_angle = 0;
         this.num_left = 3
+        this.score = 0;
     }
 
     make_control_panel() {
@@ -181,7 +182,7 @@ export class Game extends Scene {
             .times(Mat4.translation(1.47, -2.22, 0.1))
             .times(Mat4.scale(digit_size, digit_size, digit_size));
 
-        this.shapes.numbers.set_string('999', context.context);
+        this.shapes.numbers.set_string(this.score.toString().padStart(3,'0'), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform1, this.materials.nums_texture);
 
         this.shapes.numbers.set_string('3', context.context);
