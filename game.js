@@ -103,10 +103,13 @@ export class Game extends Simulation {
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
         this.spin_angle = 0;
-        this.num_left = 3
+        this.num_left = 3;
+        this.thrown = false;
     }
 
     make_control_panel() {
+        this.key_triggered_button("Throw dart", ["j"], () => this.thrown = true);
+        this.new_line();
     }
 
     draw_background(context, program_state, model_transform) {
@@ -215,7 +218,7 @@ export class Game extends Simulation {
                 .emplace(Mat4.translation(...vec3(0, .5, 7)).times(Mat4.rotation(Math.PI/6,1,0,0)).times(Mat4.rotation(Math.PI,0,1,0)),
                     vec3(0, 0, 0), 0));
         }
-        this.thrown = true;
+
         if (this.thrown) {
             // this.bodies[1].linear_velocity[1] += dt * -9.8;
             this.bodies[1].linear_velocity[2] = -1;
