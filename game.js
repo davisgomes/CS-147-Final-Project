@@ -1,9 +1,10 @@
 import {defs, tiny} from './examples/common.js';
 import {Shape_From_File} from "./examples/obj-file-demo.js";
+import { Body, Simulation } from "./examples/collisions-demo.js";
 import {MTL_Shader} from "./mtl-shader.js";
 
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture, unsafe3
 } = tiny;
 
 export class Text_Line extends Shape {
@@ -40,7 +41,7 @@ export class Text_Line extends Shape {
     }
 }
 
-export class Game extends Scene {
+export class Game extends Simulation {
     /**
      *  **Base_scene** is a Scene that can be added to any display canvas.
      *  Setup the shapes, materials, camera, and lighting here.
@@ -48,13 +49,20 @@ export class Game extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
+        this.thrown = false;
+        this.colliders = [
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .5},
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .1},
+            {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: .1}
+        ];
+        this.collider_selection = 1;
 
         // ** Shapes **
         this.shapes = {
             axis: new defs.Axis_Arrows(),
             board: new defs.Capped_Cylinder(5, 100, [0, 1]),
             background: new defs.Square(),
-            dart: new Shape_From_File('assets/dart.obj'),
+            dart: new Shape_From_File('./assets/dart.obj'),
             numbers: new Text_Line(3)
         };
 
@@ -89,7 +97,8 @@ export class Game extends Scene {
             }),
             nums_texture: new Material(new defs.Textured_Phong(1), {
                 ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/numbers.png")
-            })
+            }),
+            bright : new Material(new defs.Phong_Shader(1), {color: color(0, 1, 0, .5), ambient: 1})
         };
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
@@ -188,7 +197,62 @@ export class Game extends Scene {
         this.shapes.numbers.draw(context, program_state, model_transform2, this.materials.nums_texture);
     }
 
+    update_state(dt) {
+        // update_state():  Override the base time-stepping code to say what this particular
+        // scene should do to its bodies every frame -- including applying forces.
+        // Generate moving bodies:
+        let model_transform = Mat4.identity();
+        // let board_transform =
+        if (this.bodies.length == 0) {
+            console.log(this.bodies.length);
+            this.bodies.push(new Body(this.shapes.board, this.materials.dartboard_texture, vec3(1.4, 1.4, .1))
+                .emplace(Mat4.translation(...vec3(0, 1.35, 0)),
+                    vec3(0, 0, 0), 0));
+        }
+        if (this.bodies.length == 1) {
+            console.log(this.bodies.length);
+            this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.5, .7, .2))
+                .emplace(Mat4.translation(...vec3(0, .5, 7)).times(Mat4.rotation(Math.PI/6,1,0,0)).times(Mat4.rotation(Math.PI,0,1,0)),
+                    vec3(0, 0, 0), 0));
+        }
+        this.thrown = true;
+        if (this.thrown) {
+            // this.bodies[1].linear_velocity[1] += dt * -9.8;
+            this.bodies[1].linear_velocity[2] = -1;
+        }
+
+        // Sometimes we delete some so they can re-generate as new ones:
+        // this.bodies = this.bodies.filter(b => (Math.random() > .01) || b.linear_velocity.norm() > 1);
+
+        const collider = this.colliders[this.collider_selection];
+        // Loop through all bodies (call each "a"):
+        for (let a of this.bodies) {
+            // Cache the inverse of matrix of body "a" to save time.
+            a.inverse = Mat4.inverse(a.drawn_location);
+            if (a.center[1] < -.5) {
+                // console.log(a);
+                a.linear_velocity = vec3(0, 0, 0);
+                a.angular_velocity = 0;
+            }
+
+            if (a.linear_velocity.norm() == 0)
+                continue;
+            // *** Collision process is here ***
+            // Loop through all bodies again (call each "b"):
+            for (let b of this.bodies) {
+                // Pass the two bodies and the collision shape to check_if_colliding():
+                if (!a.check_if_colliding(b, collider))
+                    continue;
+                // If we get here, we collided, so turn red and zero out the
+                // velocity so they don't inter-penetrate any further.
+                a.linear_velocity = vec3(0, 0, 0);
+                a.angular_velocity = 0;
+            }
+        }
+    }
+
     display(context, program_state) {
+        super.display(context, program_state);
         if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
@@ -205,9 +269,17 @@ export class Game extends Scene {
 
         this.draw_background(context, program_state, model_transform);
         this.draw_walls(context, program_state, model_transform);
-        this.draw_dartboard(context, program_state, model_transform);
-        this.draw_dart(context, program_state, model_transform);
+        // this.draw_dartboard(context, program_state, model_transform);
+        // this.draw_dart(context, program_state, model_transform);
         this.draw_score_and_darts_left(context, program_state, model_transform);
         this.draw_arsenal(context, program_state, model_transform);
+
+        // Draw an extra bounding sphere around each drawn shape to show
+        // the physical shape that is really being collided with:
+        const {points, leeway} = this.colliders[this.collider_selection];
+        const size = vec3(1 + leeway, 1 + leeway, 1 + leeway);
+        for (let b of this.bodies)
+            points.draw(context, program_state, b.drawn_location.times(Mat4.scale(...size)), this.materials.bright, "LINE_STRIP");
+
     }
 }
