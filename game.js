@@ -108,7 +108,7 @@ export class Game extends Simulation {
     }
 
     make_control_panel() {
-        this.key_triggered_button("Throw dart", ["j"], () => this.thrown = true);
+        this.key_triggered_button("Throw dart", ["j"], () => {if (this.num_left) this.thrown = true});
         this.new_line();
     }
 
@@ -196,7 +196,7 @@ export class Game extends Simulation {
         this.shapes.numbers.set_string('999', context.context);
         this.shapes.numbers.draw(context, program_state, model_transform1, this.materials.nums_texture);
 
-        this.shapes.numbers.set_string('3', context.context);
+        this.shapes.numbers.set_string(this.num_left.toString(), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform2, this.materials.nums_texture);
     }
 
@@ -205,15 +205,16 @@ export class Game extends Simulation {
         // scene should do to its bodies every frame -- including applying forces.
         // Generate moving bodies:
         let model_transform = Mat4.identity();
+        let dart_index = 1 + (3-this.num_left)
         // let board_transform =
         if (this.bodies.length == 0) {
-            console.log(this.bodies.length);
+            //console.log(this.bodies.length);
             this.bodies.push(new Body(this.shapes.board, this.materials.dartboard_texture, vec3(1.4, 1.4, .1))
                 .emplace(Mat4.translation(...vec3(0, 1.35, 0)),
                     vec3(0, 0, 0), 0));
         }
-        if (this.bodies.length == 1) {
-            console.log(this.bodies.length);
+        if (this.bodies.length == dart_index && this.num_left > 0) {
+            //console.log(this.bodies.length);
             this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.5, .7, .2))
                 .emplace(Mat4.translation(...vec3(0, .5, 7)).times(Mat4.rotation(Math.PI/6,1,0,0)).times(Mat4.rotation(Math.PI,0,1,0)),
                     vec3(0, 0, 0), 0));
@@ -221,7 +222,7 @@ export class Game extends Simulation {
 
         if (this.thrown) {
             // this.bodies[1].linear_velocity[1] += dt * -9.8;
-            this.bodies[1].linear_velocity[2] = -1;
+            this.bodies[dart_index].linear_velocity[2] = -1;
         }
 
         // Sometimes we delete some so they can re-generate as new ones:
@@ -250,6 +251,9 @@ export class Game extends Simulation {
                 // velocity so they don't inter-penetrate any further.
                 a.linear_velocity = vec3(0, 0, 0);
                 a.angular_velocity = 0;
+                this.thrown = false;
+                this.num_left -= 1;
+                //this.bodies.pop();
             }
         }
     }
