@@ -49,10 +49,12 @@ export class Game extends Simulation {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
+        this.program_state;
+        this.sway = 0;
         this.thrown = false;
         this.colliders = [
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .5},
-            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .1},
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(4), leeway: .1},
             {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: .1}
         ];
         this.collider_selection = 1;
@@ -216,22 +218,27 @@ export class Game extends Simulation {
         let dart_index = 1 + (3 - this.num_left)
         // let board_transform =
         if (this.bodies.length == 0) {
-            //console.log(this.bodies.length);
             this.bodies.push(new Body(this.shapes.board, this.materials.dartboard_texture, vec3(1.4, 1.4, .1))
                 .emplace(Mat4.translation(...vec3(0, 1.35, 0)),
                     vec3(0, 0, 0), 0));
         }
         if (this.bodies.length == dart_index && this.num_left >= 0) {
-            //console.log(this.bodies.length);
-            this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.5, .7, .2))
-                .emplace(Mat4.translation(...vec3(0, .5, 7)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
+            this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.3, .3, .1))
+                .emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
                     vec3(0, 0, 0), 0));
+            console.log(this.bodies.length);
         }
 
         if (this.thrown) {
             // this.bodies[1].linear_velocity[1] += dt * -9.8;
-            this.bodies[dart_index].linear_velocity[2] = -1;
+            this.bodies[dart_index].linear_velocity[2] = -2;
+            this.bodies[dart_index].linear_velocity[0] = -this.sway;
+        } else if (this.num_left >= 0){
+            this.bodies[dart_index].emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0))
+                    .times(Mat4.rotation(this.sway, 0, 1, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
+                vec3(0, 0, 0), 0)
         }
+
 
         // Sometimes we delete some so they can re-generate as new ones:
         // this.bodies = this.bodies.filter(b => (Math.random() > .01) || b.linear_velocity.norm() > 1);
@@ -268,6 +275,8 @@ export class Game extends Simulation {
     }
 
     display(context, program_state) {
+        this.program_state = program_state;
+        this.sway = (Math.PI/8)*Math.sin(Math.PI*(this.program_state.animation_time/5000));
         super.display(context, program_state);
         if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
