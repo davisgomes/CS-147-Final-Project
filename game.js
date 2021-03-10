@@ -54,7 +54,7 @@ export class Game extends Simulation {
         this.thrown = false;
         this.colliders = [
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .5},
-            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(4), leeway: .1},
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(5), leeway: .1},
             {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: .1}
         ];
         this.collider_selection = 1;
@@ -215,13 +215,20 @@ export class Game extends Simulation {
         // scene should do to its bodies every frame -- including applying forces.
         // Generate moving bodies:
         let model_transform = Mat4.identity();
-        let dart_index = 1 + (3 - this.num_left)
-        // let board_transform =
+        let dart_index = 2 + (3 - this.num_left)
+        //build wall
         if (this.bodies.length == 0) {
-            this.bodies.push(new Body(this.shapes.board, this.materials.dartboard_texture, vec3(1.4, 1.4, .1))
+            this.bodies.push(new Body(this.shapes.background, this.materials.background_texture, vec3(4, 4, .01))
+                .emplace(Mat4.translation(...vec3(0, 0, 0)),
+                    vec3(0, 0, 0), 0));
+        }
+        // build board
+        if (this.bodies.length == 1) {
+            this.bodies.push(new Body(this.shapes.board, this.materials.dartboard_texture, vec3(1.4, 1.4, .2))
                 .emplace(Mat4.translation(...vec3(0, 1.35, 0)),
                     vec3(0, 0, 0), 0));
         }
+        // build dart
         if (this.bodies.length == dart_index && this.num_left >= 0) {
             this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.3, .3, .1))
                 .emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
@@ -292,7 +299,7 @@ export class Game extends Simulation {
 
         let model_transform = Mat4.identity();
 
-        this.draw_background(context, program_state, model_transform);
+        // this.draw_background(context, program_state, model_transform);
         this.draw_walls(context, program_state, model_transform);
         // this.draw_dartboard(context, program_state, model_transform);
         // this.draw_dart(context, program_state, model_transform);
