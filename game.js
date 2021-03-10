@@ -108,7 +108,7 @@ export class Game extends Simulation {
     }
 
     make_control_panel() {
-        this.key_triggered_button("Throw dart", ["j"], () => {if (this.num_left) this.thrown = true});
+        this.key_triggered_button("Throw dart", ["j"], () => {if (this.num_left >= 0) this.thrown = true});
         this.new_line();
     }
 
@@ -196,7 +196,7 @@ export class Game extends Simulation {
         this.shapes.numbers.set_string('999', context.context);
         this.shapes.numbers.draw(context, program_state, model_transform1, this.materials.nums_texture);
 
-        this.shapes.numbers.set_string(this.num_left.toString(), context.context);
+        this.shapes.numbers.set_string(Math.max(this.num_left,0).toString(), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform2, this.materials.nums_texture);
     }
 
@@ -213,7 +213,7 @@ export class Game extends Simulation {
                 .emplace(Mat4.translation(...vec3(0, 1.35, 0)),
                     vec3(0, 0, 0), 0));
         }
-        if (this.bodies.length == dart_index && this.num_left > 0) {
+        if (this.bodies.length == dart_index && this.num_left >= 0) {
             //console.log(this.bodies.length);
             this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.5, .7, .2))
                 .emplace(Mat4.translation(...vec3(0, .5, 7)).times(Mat4.rotation(Math.PI/6,1,0,0)).times(Mat4.rotation(Math.PI,0,1,0)),
