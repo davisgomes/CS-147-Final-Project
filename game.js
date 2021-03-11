@@ -105,7 +105,10 @@ export class Game extends Simulation {
             nums_texture: new Material(new defs.Textured_Phong(1), {
                 ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/numbers.png")
             }),
-            bright: new Material(new defs.Phong_Shader(1), {color: color(0, 1, 0, .5), ambient: 1})
+            bright: new Material(new defs.Phong_Shader(1), {color: color(0, 1, 0, .5), ambient: 1}),
+            power_meter: new Material(new defs.Textured_Phong(1), {
+                ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/red.png")
+            })
         };
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
@@ -113,11 +116,20 @@ export class Game extends Simulation {
         this.num_left = 3;
         this.thrown = false;
         this.score = 0;
+        this.power_scale = 0.5;
     }
 
     make_control_panel() {
         this.key_triggered_button("Throw dart", ["j"], () => {
             if (this.num_left >= 0) this.thrown = true
+        });
+        this.new_line();
+        this.key_triggered_button("Increase power", ["u"], () => {
+            this.power_scale = Math.min(1, this.power_scale += 0.025);
+        });
+        this.new_line();
+        this.key_triggered_button("Lower power", ["n"], () => {
+            this.power_scale = Math.max(0.025, this.power_scale -= 0.025);
         });
         this.new_line();
     }
@@ -191,6 +203,15 @@ export class Game extends Simulation {
                 .times(Mat4.rotation(this.spin_angle, 0, 0, 1));
             this.shapes.dart.draw(context, program_state, model_transformi, this.materials.dart_texture);
         }
+    }
+
+    draw_power_meter(context, program_state, model_transform) {
+        model_transform = model_transform
+            .times(Mat4.translation(-1.3, 0, 10)
+            .times(Mat4.translation(0,-(0.6-0.6*this.power_scale),0))
+            .times(Mat4.scale(0.1,0.6*this.power_scale,0))
+        );
+        this.shapes.background.draw(context, program_state, model_transform, this.materials.power_meter);
     }
 
     draw_score_and_darts_left(context, program_state, model_transform) {
@@ -304,6 +325,7 @@ export class Game extends Simulation {
         // this.draw_dart(context, program_state, model_transform);
         this.draw_score_and_darts_left(context, program_state, model_transform);
         this.draw_arsenal(context, program_state, model_transform);
+        this.draw_power_meter(context, program_state, model_transform);
 
         // Draw an extra bounding sphere around each drawn shape to show
         // the physical shape that is really being collided with:
