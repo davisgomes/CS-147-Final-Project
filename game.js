@@ -102,6 +102,14 @@ export class Game extends Scene {
     }
 
     make_control_panel() {
+        this.key_triggered_button("Increase power", ["u"], () => {
+            this.power_scale = Math.min(1, this.power_scale += 0.025);
+        });
+        this.new_line();
+        this.key_triggered_button("Lower power", ["n"], () => {
+            this.power_scale = Math.max(0.025, this.power_scale -= 0.025);
+        });
+        this.new_line();
     }
 
     draw_background(context, program_state, model_transform) {
