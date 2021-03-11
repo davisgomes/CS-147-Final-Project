@@ -116,7 +116,7 @@ export class Game extends Simulation {
         this.num_left = 3;
         this.thrown = false;
         this.score = 0;
-        this.power_scale = 0.5;
+        this.power_scale = 1;
     }
 
     make_control_panel() {
@@ -125,11 +125,11 @@ export class Game extends Simulation {
         });
         this.new_line();
         this.key_triggered_button("Increase power", ["u"], () => {
-            this.power_scale = Math.min(1, this.power_scale += 0.025);
+            this.power_scale = Math.min(2, this.power_scale += 0.125);
         });
         this.new_line();
         this.key_triggered_button("Lower power", ["n"], () => {
-            this.power_scale = Math.max(0.025, this.power_scale -= 0.025);
+            this.power_scale = Math.max(0.025, this.power_scale -= 0.125);
         });
         this.new_line();
     }
@@ -208,8 +208,8 @@ export class Game extends Simulation {
     draw_power_meter(context, program_state, model_transform) {
         model_transform = model_transform
             .times(Mat4.translation(-1.3, 0, 10)
-            .times(Mat4.translation(0,-(0.6-0.6*this.power_scale),0))
-            .times(Mat4.scale(0.1,0.6*this.power_scale,0))
+            .times(Mat4.translation(0,-(0.6-0.6*this.power_scale/2),0))
+            .times(Mat4.scale(0.1,0.6*this.power_scale/2,0))
         );
         this.shapes.background.draw(context, program_state, model_transform, this.materials.power_meter);
     }
@@ -255,11 +255,13 @@ export class Game extends Simulation {
                 .emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
                     vec3(0, 0, 0), 0));
         }
-
+        // console.log(this.bodies[dart_index].linear_velocity);
         if (this.thrown && this.bodies[dart_index].linear_velocity[2] == 0) {
-            // this.bodies[1].linear_velocity[1] += dt * -9.8;
-            this.bodies[dart_index].linear_velocity[2] = -2;
             this.bodies[dart_index].linear_velocity[0] = -this.sway;
+            this.bodies[dart_index].linear_velocity[1] = this.power_scale*1;
+            this.bodies[dart_index].linear_velocity[2] = -3;
+        } else if(this.thrown) {
+            this.bodies[dart_index].linear_velocity[1] += dt * -1;
         } else if (this.num_left >= 0 && this.bodies[dart_index].linear_velocity[2] == 0){
             this.bodies[dart_index].emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0))
                     .times(Mat4.rotation(this.sway, 0, 1, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
@@ -275,10 +277,12 @@ export class Game extends Simulation {
         for (let a of this.bodies) {
             // Cache the inverse of matrix of body "a" to save time.
             a.inverse = Mat4.inverse(a.drawn_location);
-            if (a.center[1] < -.5) {
+            if (a.center[1] < -2) {
                 // console.log(a);
                 a.linear_velocity = vec3(0, 0, 0);
                 a.angular_velocity = 0;
+                this.thrown = false;
+                this.num_left -= 1;
             }
 
             if (a.linear_velocity.norm() == 0)
