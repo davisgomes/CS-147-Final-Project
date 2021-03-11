@@ -233,14 +233,13 @@ export class Game extends Simulation {
             this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.3, .3, .1))
                 .emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
                     vec3(0, 0, 0), 0));
-            console.log(this.bodies.length);
         }
 
-        if (this.thrown) {
+        if (this.thrown && this.bodies[dart_index].linear_velocity[2] == 0) {
             // this.bodies[1].linear_velocity[1] += dt * -9.8;
             this.bodies[dart_index].linear_velocity[2] = -2;
             this.bodies[dart_index].linear_velocity[0] = -this.sway;
-        } else if (this.num_left >= 0){
+        } else if (this.num_left >= 0 && this.bodies[dart_index].linear_velocity[2] == 0){
             this.bodies[dart_index].emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0))
                     .times(Mat4.rotation(this.sway, 0, 1, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
                 vec3(0, 0, 0), 0)
