@@ -89,12 +89,16 @@ export class Game extends Scene {
             }),
             nums_texture: new Material(new defs.Textured_Phong(1), {
                 ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/numbers.png")
+            }),
+            power_meter: new Material(new defs.Textured_Phong(1), {
+                ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/red.png")
             })
         };
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
         this.spin_angle = 0;
         this.num_left = 3
+        this.power_scale = 0.5;
     }
 
     make_control_panel() {
@@ -171,6 +175,15 @@ export class Game extends Scene {
         }
     }
 
+    draw_power_meter(context, program_state, model_transform) {
+        model_transform = model_transform
+            .times(Mat4.translation(-1.3, 0, 10)
+            .times(Mat4.translation(0,-(0.6-0.6*this.power_scale),0))
+            .times(Mat4.scale(0.1,0.6*this.power_scale,0))
+        );
+        this.shapes.background.draw(context, program_state, model_transform, this.materials.power_meter);
+    }
+
     draw_score_and_darts_left(context, program_state, model_transform) {
         let digit_size = 0.3;
         let model_transform1 = model_transform
@@ -209,5 +222,6 @@ export class Game extends Scene {
         this.draw_dart(context, program_state, model_transform);
         this.draw_score_and_darts_left(context, program_state, model_transform);
         this.draw_arsenal(context, program_state, model_transform);
+        this.draw_power_meter(context, program_state, model_transform);
     }
 }
