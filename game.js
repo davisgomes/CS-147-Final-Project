@@ -54,8 +54,8 @@ export class Game extends Simulation {
         this.thrown = false;
         this.colliders = [
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .5},
-            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(5), leeway: .1},
-            {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: .1}
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .1},
+            {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: 0.1}
         ];
         this.collider_selection = 1;
 
@@ -65,7 +65,9 @@ export class Game extends Simulation {
             board: new defs.Capped_Cylinder(5, 100, [0, 1]),
             background: new defs.Square(),
             dart: new Shape_From_File('./assets/dart.obj'),
-            numbers: new Text_Line(3)
+            numbers: new Text_Line(3),
+            board_square: new defs.Square(),
+            board_circle: new defs.Regular_2D_Polygon(2, 2)
         };
 
         // ** Materials **
@@ -105,7 +107,8 @@ export class Game extends Simulation {
             nums_texture: new Material(new defs.Textured_Phong(1), {
                 ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/numbers.png")
             }),
-            bright: new Material(new defs.Phong_Shader(1), {color: color(0, 1, 0, .5), ambient: 1})
+            bright: new Material(new defs.Phong_Shader(1), {color: color(0, 1, 0, .5), ambient: 1}),
+            invisible: new Material(new defs.Phong_Shader(1), {color: color(1, 1, 1, 0), ambient: 1})
         };
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
@@ -113,6 +116,8 @@ export class Game extends Simulation {
         this.num_left = 3;
         this.thrown = false;
         this.score = 0;
+        this.board_center = 1.03
+        this.board_values = []
     }
 
     make_control_panel() {
@@ -160,11 +165,10 @@ export class Game extends Simulation {
     }
 
     draw_dartboard(context, program_state, model_transform) {
-        let board_pos = 1.03;
         let board_wh = 1.3;
         model_transform = model_transform
             .times(Mat4.scale(board_wh, board_wh, 0.05))
-            .times(Mat4.translation(0, board_pos, 1));
+            .times(Mat4.translation(0, this.board_center, 1));
         this.shapes.board.draw(context, program_state, model_transform, this.materials.dartboard_texture);
     }
 
@@ -210,30 +214,83 @@ export class Game extends Simulation {
         this.shapes.numbers.draw(context, program_state, model_transform2, this.materials.nums_texture);
     }
 
+    construct_ring(radius, num_elems, scale, z_pos) {
+        for (let i = 0; i < num_elems; i++) {
+            let radius_x = radius * Math.cos(2 * Math.PI/num_elems * i)
+            let radius_y = radius * Math.sin(2 * Math.PI/num_elems * i)
+
+            let new_square = new Body(this.shapes.board_square, this.materials.invisible, vec3(1.4, 1.4, .2))
+
+            new_square.emplace(Mat4.translation(radius_x, 1.35 + radius_y, z_pos)
+                .times(Mat4.rotation(2 * Math.PI/num_elems * i + Math.PI/2, 0, 0, 1))
+                .times(Mat4.scale(...scale)), vec3(0, 0, 0), 0);
+
+            this.bodies.push(new_square)
+        }
+    }
+
+    construct_board_elements() {
+        let num_elems = 20
+        let circle_values = [6, 13,4, 18, 1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10]
+        let z_pos = -0.1
+
+        // first populate outside ring
+        this.construct_ring(1.03, num_elems, vec3(0.1, 0.02, 0.1), z_pos);
+        this.board_values.push(...circle_values.map(function(x) { return x * 2 } ));
+
+        // populate 2nd ring
+        this.construct_ring(0.82, num_elems, vec3(0.07, 0.1, 0.1) ,z_pos);
+        this.board_values.push(...circle_values);
+        this.board_values.push(...circle_values.map(function(x) { return x * 3 } ));
+
+        // populate third ring
+        this.construct_ring(0.625, num_elems, vec3(0.06, 0.02, 0.1), z_pos);
+
+        // populate fourth ring
+        this.construct_ring(0.35, num_elems, vec3(0.01, 0.14, 0.1), z_pos);
+        this.board_values.push(...circle_values);
+
+        // outer circle
+        let outer_circle = new Body(this.shapes.board_square, this.materials.invisible, vec3(1.4, 1.4, .2));
+
+        outer_circle.emplace(Mat4.translation(0, 1.35, z_pos)
+            .times(Mat4.scale(0.06, 0.06, 0.1)), vec3(0, 0, 0), 0);
+
+        this.bodies.push(outer_circle);
+        this.board_values.push(25);
+
+        //inner circle
+        let inner_circle = new Body(this.shapes.board_square, this.materials.invisible, vec3(1.4, 1.4, .2));
+
+        inner_circle.emplace(Mat4.translation(0, 1.35, z_pos + 0.05)
+            .times(Mat4.scale(0.03, 0.03, 0.1)), vec3(0, 0, 0), 0);
+
+        this.bodies.push(inner_circle);
+        this.board_values.push(50);
+    }
+
     update_state(dt) {
         // update_state():  Override the base time-stepping code to say what this particular
         // scene should do to its bodies every frame -- including applying forces.
         // Generate moving bodies:
         let model_transform = Mat4.identity();
-        let dart_index = 2 + (3 - this.num_left)
+        let dart_index = 83 + (3 - this.num_left)
+        let value_offset = 1
         //build wall
-        if (this.bodies.length == 0) {
+        if (this.bodies.length === 0) {
             this.bodies.push(new Body(this.shapes.background, this.materials.background_texture, vec3(4, 4, .01))
                 .emplace(Mat4.translation(...vec3(0, 0, 0)),
                     vec3(0, 0, 0), 0));
         }
-        // build board
-        if (this.bodies.length == 1) {
-            this.bodies.push(new Body(this.shapes.board, this.materials.dartboard_texture, vec3(1.4, 1.4, .2))
-                .emplace(Mat4.translation(...vec3(0, 1.35, 0)),
-                    vec3(0, 0, 0), 0));
+        // build board elements
+        if (this.bodies.length === 1) {
+            this.construct_board_elements()
         }
         // build dart
-        if (this.bodies.length == dart_index && this.num_left >= 0) {
+        if (this.bodies.length === dart_index && this.num_left >= 0) {
             this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.3, .3, .1))
                 .emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
                     vec3(0, 0, 0), 0));
-            console.log(this.bodies.length);
         }
 
         if (this.thrown) {
@@ -261,23 +318,31 @@ export class Game extends Simulation {
                 a.angular_velocity = 0;
             }
 
-            if (a.linear_velocity.norm() == 0)
+            if (a.linear_velocity.norm() === 0)
                 continue;
 
             // *** Collision process is here ***
             // Loop through all bodies again (call each "b"):
             //for (let b of this.bodies) {
             // Pass the two bodies and the collision shape to check_if_colliding():
-            if (!a.check_if_colliding(this.bodies[0], collider))
-                continue;
-            // If we get here, we collided, so turn red and zero out the
-            // velocity so they don't inter-penetrate any further.
-            a.linear_velocity = vec3(0, 0, 0);
-            a.angular_velocity = 0;
-            this.thrown = false;
-            this.num_left -= 1;
-            //this.bodies.pop();
-            //}
+
+            for (let i = 0; i < dart_index; i++) {
+                if (!a.check_if_colliding(this.bodies[i], collider))
+                    continue;
+                // If we get here, we collided, so turn red and zero out the
+                // velocity so they don't inter-penetrate any further.
+                a.linear_velocity = vec3(0, 0, 0);
+                a.angular_velocity = 0;
+                this.thrown = false;
+                this.num_left -= 1;
+                if (i !== 0) {
+                    this.increase_score(this.board_values[i - 1]);
+                }
+                console.log(i);
+                break;
+                //this.bodies.pop();
+                //}
+            }
         }
     }
 
@@ -289,6 +354,8 @@ export class Game extends Simulation {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(Mat4.translation(0, 0, -12));
+            // for testing
+            //program_state.set_camera(Mat4.translation(0, -1.3, -3.5));
         }
 
         program_state.projection_transform = Mat4.perspective(
@@ -301,7 +368,7 @@ export class Game extends Simulation {
 
         // this.draw_background(context, program_state, model_transform);
         this.draw_walls(context, program_state, model_transform);
-        // this.draw_dartboard(context, program_state, model_transform);
+        this.draw_dartboard(context, program_state, model_transform);
         // this.draw_dart(context, program_state, model_transform);
         this.draw_score_and_darts_left(context, program_state, model_transform);
         this.draw_arsenal(context, program_state, model_transform);
