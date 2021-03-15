@@ -53,11 +53,11 @@ export class Game extends Simulation {
         this.sway = 0;
         this.thrown = false;
         this.colliders = [
-            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .5},
-            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .1},
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .2},
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(5), leeway: .1},
             {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: 0.1}
         ];
-        this.collider_selection = 1;
+        this.collider_selection = 0;
 
         // ** Shapes **
         this.shapes = {
@@ -232,7 +232,7 @@ export class Game extends Simulation {
     construct_board_elements() {
         let num_elems = 20
         let circle_values = [6, 13,4, 18, 1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10]
-        let z_pos = -0.1
+        let z_pos = 0
 
         // first populate outside ring
         this.construct_ring(1.03, num_elems, vec3(0.1, 0.02, 0.1), z_pos);
@@ -262,7 +262,7 @@ export class Game extends Simulation {
         //inner circle
         let inner_circle = new Body(this.shapes.board_square, this.materials.invisible, vec3(1.4, 1.4, .2));
 
-        inner_circle.emplace(Mat4.translation(0, 1.35, z_pos + 0.05)
+        inner_circle.emplace(Mat4.translation(0, 1.35, z_pos + 0.02)
             .times(Mat4.scale(0.03, 0.03, 0.1)), vec3(0, 0, 0), 0);
 
         this.bodies.push(inner_circle);
@@ -278,7 +278,7 @@ export class Game extends Simulation {
         let value_offset = 1
         //build wall
         if (this.bodies.length === 0) {
-            this.bodies.push(new Body(this.shapes.background, this.materials.background_texture, vec3(4, 4, .01))
+            this.bodies.push(new Body(this.shapes.background, this.materials.background_texture, vec3(4, 4, -.05))
                 .emplace(Mat4.translation(...vec3(0, 0, 0)),
                     vec3(0, 0, 0), 0));
         }
@@ -307,19 +307,20 @@ export class Game extends Simulation {
         // Sometimes we delete some so they can re-generate as new ones:
         // this.bodies = this.bodies.filter(b => (Math.random() > .01) || b.linear_velocity.norm() > 1);
 
-        const collider = this.colliders[this.collider_selection];
+
         // Loop through all bodies (call each "a"):
-        for (let a of this.bodies) {
+        if (this.bodies[dart_index]) {
+            let a = this.bodies[dart_index]
             // Cache the inverse of matrix of body "a" to save time.
             a.inverse = Mat4.inverse(a.drawn_location);
             if (a.center[1] < -.5) {
-                // console.log(a);
+                //console.log(a);
                 a.linear_velocity = vec3(0, 0, 0);
                 a.angular_velocity = 0;
             }
 
             if (a.linear_velocity.norm() === 0)
-                continue;
+                return;
 
             // *** Collision process is here ***
             // Loop through all bodies again (call each "b"):
@@ -327,6 +328,12 @@ export class Game extends Simulation {
             // Pass the two bodies and the collision shape to check_if_colliding():
 
             for (let i = 0; i < dart_index; i++) {
+                let collider = this.colliders[this.collider_selection];
+                if (i === 0) {
+                    collider = this.colliders[1];
+                    console.log(collider)
+                }
+
                 if (!a.check_if_colliding(this.bodies[i], collider))
                     continue;
                 // If we get here, we collided, so turn red and zero out the
@@ -338,10 +345,8 @@ export class Game extends Simulation {
                 if (i !== 0) {
                     this.increase_score(this.board_values[i - 1]);
                 }
-                console.log(i);
+                console.log(i)
                 break;
-                //this.bodies.pop();
-                //}
             }
         }
     }
