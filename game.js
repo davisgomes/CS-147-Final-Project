@@ -54,8 +54,8 @@ export class Game extends Simulation {
         this.thrown = false;
         this.colliders = [
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .2},
-            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(5), leeway: .1},
-            {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: 0.1}
+            {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(6), leeway: .1},
+            {intersect_test: Body.intersect_cube, points: new defs.Cube(), leeway: 0.05}
         ];
         this.collider_selection = 0;
 
@@ -108,7 +108,10 @@ export class Game extends Simulation {
                 ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/numbers.png")
             }),
             bright: new Material(new defs.Phong_Shader(1), {color: color(0, 1, 0, .5), ambient: 1}),
-            invisible: new Material(new defs.Phong_Shader(1), {color: color(1, 1, 1, 0), ambient: 1})
+            invisible: new Material(new defs.Phong_Shader(1), {color: color(1, 1, 1, 0), ambient: 1}),
+            power_meter: new Material(new defs.Textured_Phong(1), {
+                ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture("assets/red.png")
+            })
         };
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
@@ -118,11 +121,30 @@ export class Game extends Simulation {
         this.score = 0;
         this.board_center = 1.03
         this.board_values = []
+        this.power_scale = 1;
+        this.show_background = true
+        this.view_collisions = false
     }
 
     make_control_panel() {
         this.key_triggered_button("Throw dart", ["j"], () => {
             if (this.num_left >= 0) this.thrown = true
+        });
+        this.new_line();
+        this.key_triggered_button("Increase power", ["u"], () => {
+            this.power_scale = Math.min(2, this.power_scale += 0.125);
+        });
+        this.new_line();
+        this.key_triggered_button("Lower power", ["n"], () => {
+            this.power_scale = Math.max(0.025, this.power_scale -= 0.125);
+        });
+        this.new_line();
+        this.key_triggered_button("Show Background", ["s"], () => {
+            this.show_background = !this.show_background
+        });
+        this.new_line();
+        this.key_triggered_button("View Collision Boundaries", ["v"], () => {
+            this.view_collisions = !this.view_collisions
         });
         this.new_line();
     }
@@ -167,7 +189,7 @@ export class Game extends Simulation {
     draw_dartboard(context, program_state, model_transform) {
         let board_wh = 1.3;
         model_transform = model_transform
-            .times(Mat4.scale(board_wh, board_wh, 0.05))
+            .times(Mat4.scale(board_wh, board_wh, 0.5))
             .times(Mat4.translation(0, this.board_center, 1));
         this.shapes.board.draw(context, program_state, model_transform, this.materials.dartboard_texture);
     }
@@ -196,6 +218,16 @@ export class Game extends Simulation {
             this.shapes.dart.draw(context, program_state, model_transformi, this.materials.dart_texture);
         }
     }
+
+    draw_power_meter(context, program_state, model_transform) {
+        model_transform = model_transform
+            .times(Mat4.translation(-1.3, 0, 10)
+                .times(Mat4.translation(0,-(0.6-0.6*this.power_scale/2),0))
+                .times(Mat4.scale(0.1,0.6*this.power_scale/2,0))
+            );
+        this.shapes.background.draw(context, program_state, model_transform, this.materials.power_meter);
+    }
+
 
     draw_score_and_darts_left(context, program_state, model_transform) {
         let digit_size = 0.3;
@@ -232,7 +264,7 @@ export class Game extends Simulation {
     construct_board_elements() {
         let num_elems = 20
         let circle_values = [6, 13,4, 18, 1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10]
-        let z_pos = 0
+        let z_pos = 0.45
 
         // first populate outside ring
         this.construct_ring(1.03, num_elems, vec3(0.1, 0.02, 0.1), z_pos);
@@ -275,10 +307,10 @@ export class Game extends Simulation {
         // Generate moving bodies:
         let model_transform = Mat4.identity();
         let dart_index = 83 + (3 - this.num_left)
-        let value_offset = 1
+
         //build wall
         if (this.bodies.length === 0) {
-            this.bodies.push(new Body(this.shapes.background, this.materials.background_texture, vec3(4, 4, -.05))
+            this.bodies.push(new Body(this.shapes.background, this.materials.background_texture, vec3(4, 4, .05))
                 .emplace(Mat4.translation(...vec3(0, 0, 0)),
                     vec3(0, 0, 0), 0));
         }
@@ -293,11 +325,13 @@ export class Game extends Simulation {
                     vec3(0, 0, 0), 0));
         }
 
-        if (this.thrown) {
-            // this.bodies[1].linear_velocity[1] += dt * -9.8;
-            this.bodies[dart_index].linear_velocity[2] = -2;
+        if (this.thrown && this.bodies[dart_index].linear_velocity[2] === 0) {
             this.bodies[dart_index].linear_velocity[0] = -this.sway;
-        } else if (this.num_left >= 0){
+            this.bodies[dart_index].linear_velocity[1] = this.power_scale;
+            this.bodies[dart_index].linear_velocity[2] = -3;
+        } else if(this.thrown) {
+            this.bodies[dart_index].linear_velocity[1] += dt * -1;
+        } else if (this.num_left >= 0 && this.bodies[dart_index].linear_velocity[2] === 0){
             this.bodies[dart_index].emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0))
                     .times(Mat4.rotation(this.sway, 0, 1, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
                 vec3(0, 0, 0), 0)
@@ -313,11 +347,6 @@ export class Game extends Simulation {
             let a = this.bodies[dart_index]
             // Cache the inverse of matrix of body "a" to save time.
             a.inverse = Mat4.inverse(a.drawn_location);
-            if (a.center[1] < -.5) {
-                //console.log(a);
-                a.linear_velocity = vec3(0, 0, 0);
-                a.angular_velocity = 0;
-            }
 
             if (a.linear_velocity.norm() === 0)
                 return;
@@ -331,7 +360,6 @@ export class Game extends Simulation {
                 let collider = this.colliders[this.collider_selection];
                 if (i === 0) {
                     collider = this.colliders[1];
-                    console.log(collider)
                 }
 
                 if (!a.check_if_colliding(this.bodies[i], collider))
@@ -342,6 +370,7 @@ export class Game extends Simulation {
                 a.angular_velocity = 0;
                 this.thrown = false;
                 this.num_left -= 1;
+
                 if (i !== 0) {
                     this.increase_score(this.board_values[i - 1]);
                 }
@@ -370,20 +399,25 @@ export class Game extends Simulation {
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
 
         let model_transform = Mat4.identity();
-
-        // this.draw_background(context, program_state, model_transform);
         this.draw_walls(context, program_state, model_transform);
-        this.draw_dartboard(context, program_state, model_transform);
-        // this.draw_dart(context, program_state, model_transform);
+
+        if (this.show_background) {
+            //this.draw_background(context, program_state, model_transform);
+            this.draw_dartboard(context, program_state, model_transform);
+        }
+        //this.draw_dart(context, program_state, model_transform);
         this.draw_score_and_darts_left(context, program_state, model_transform);
         this.draw_arsenal(context, program_state, model_transform);
+        this.draw_power_meter(context, program_state, model_transform);
 
         // Draw an extra bounding sphere around each drawn shape to show
         // the physical shape that is really being collided with:
-        const {points, leeway} = this.colliders[this.collider_selection];
-        const size = vec3(1 + leeway, 1 + leeway, 1 + leeway);
-        for (let b of this.bodies)
-            points.draw(context, program_state, b.drawn_location.times(Mat4.scale(...size)), this.materials.bright, "LINE_STRIP");
+        if (this.view_collisions) {
+            const {points, leeway} = this.colliders[this.collider_selection];
+            const size = vec3(1 + leeway, 1 + leeway, 1 + leeway);
+            for (let b of this.bodies)
+                points.draw(context, program_state, b.drawn_location.times(Mat4.scale(...size)), this.materials.bright, "LINE_STRIP");
+        }
 
     }
 
