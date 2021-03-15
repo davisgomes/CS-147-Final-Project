@@ -139,7 +139,11 @@ export class Game extends Simulation {
             this.power_scale = Math.max(0.025, this.power_scale -= 0.125);
         });
         this.new_line();
-        this.key_triggered_button("Show Background", ["s"], () => {
+        this.key_triggered_button("Reset", ["r"], () => {
+            this.reset()
+        });
+        this.new_line();
+        this.key_triggered_button("Toggle Dartboard View", ["t"], () => {
             this.show_background = !this.show_background
         });
         this.new_line();
@@ -147,6 +151,7 @@ export class Game extends Simulation {
             this.view_collisions = !this.view_collisions
         });
         this.new_line();
+
     }
 
     draw_background(context, program_state, model_transform) {
@@ -263,7 +268,7 @@ export class Game extends Simulation {
 
     construct_board_elements() {
         let num_elems = 20
-        let circle_values = [6, 13,4, 18, 1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10]
+        let circle_values = [6, 13, 4, 18, 1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10]
         let z_pos = 0.45
 
         // first populate outside ring
@@ -423,5 +428,10 @@ export class Game extends Simulation {
 
     increase_score(num_points) {
         this.score += num_points;
+    }
+
+    reset() {
+        this.score = 0
+        this.num_left = 3
     }
 }
