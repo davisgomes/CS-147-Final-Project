@@ -54,6 +54,7 @@ export class Game extends Simulation {
         this.thrown = false;
         this.player_turn = false;
         this.players_turn_over = 0;
+        this.reset_state = false;
         this.colliders = [
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .2},
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(6), leeway: .1},
@@ -142,7 +143,7 @@ export class Game extends Simulation {
             this.power_scale = Math.max(0.025, this.power_scale -= 0.125);
         });
         this.new_line();
-        this.key_triggered_button("Reset", ["r"], () => {
+        this.key_triggered_button("Reset", ["q"], () => {
             this.reset()
         });
         this.new_line();
@@ -321,7 +322,7 @@ export class Game extends Simulation {
         // scene should do to its bodies every frame -- including applying forces.
         // Generate moving bodies:
         let model_transform = Mat4.identity();
-        let dart_index = 83 + (6 - this.num_left)
+        let dart_index = 83 + (6 - this.num_left);
 
         //build wall
         if (this.bodies.length === 0) {
@@ -332,6 +333,12 @@ export class Game extends Simulation {
         // build board elements
         if (this.bodies.length === 1) {
             this.construct_board_elements()
+        }
+        if (this.reset_state){
+            while(this.bodies.length > dart_index) {
+                this.bodies.pop();
+            }
+            this.reset_state = false;
         }
         // build dart
         if (this.bodies.length === dart_index && this.num_left > 0) {
@@ -460,7 +467,13 @@ export class Game extends Simulation {
     }
 
     reset() {
-        this.player_score = 0
-        this.num_left = 6
+        this.player_score = 0;
+        this.opponent_score = 0;
+        this.num_left = 6;
+        this.sway = 0;
+        this.thrown = false;
+        this.player_turn = false;
+        this.players_turn_over = this.program_state.animation_time;
+        this.reset_state = true;
     }
 }
