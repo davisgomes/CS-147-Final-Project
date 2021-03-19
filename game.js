@@ -93,7 +93,7 @@ export class Game extends Simulation {
             }),
             background_texture: new Material(new defs.Textured_Phong(1), {
                 color: color(0, 0, 0, 1),
-                ambient: 0.8, diffusivity: .5, specularity: .5, texture: new Texture("assets/background.png")
+                ambient: 0.8, diffusivity: .5, specularity: .5, texture: new Texture("assets/opponent_background.png")
             }),
             wall_texture: new Material(new defs.Textured_Phong(1), {
                 color: color(0, 0, 0, 1),
@@ -241,21 +241,21 @@ export class Game extends Simulation {
     draw_score_and_darts_left(context, program_state, model_transform) {
         let digit_size = 0.3;
         let model_transform0 = model_transform
-            .times(Mat4.translation(-1.7, -2., 0.1))
-            .times(Mat4.scale(digit_size, digit_size/2, digit_size));
+            .times(Mat4.translation(-1.2, -2., 0.1))
+            .times(Mat4.scale(digit_size, digit_size/1.5, digit_size));
         let model_transform1 = model_transform
-            .times(Mat4.translation(-1.7, -2.4, 0.1))
-            .times(Mat4.scale(digit_size, digit_size/2, digit_size));
+            .times(Mat4.translation(-1.2, -2.6, 0.1))
+            .times(Mat4.scale(digit_size, digit_size/1.5, digit_size));
         let model_transform2 = model_transform
             .times(Mat4.translation(1.47, -2.22, 0.1))
             .times(Mat4.scale(digit_size, digit_size, digit_size));
 
-        this.opponent_score = this.opponent_score;
-        this.shapes.numbers.set_string(this.opponent_score.toString().padStart(3, '0'), context.context);
-        this.shapes.numbers.draw(context, program_state, model_transform0, this.materials.nums_texture);
-
         this.player_score = this.player_score;
         this.shapes.numbers.set_string(this.player_score.toString().padStart(3, '0'), context.context);
+        this.shapes.numbers.draw(context, program_state, model_transform0, this.materials.nums_texture);
+
+        this.opponent_score = this.opponent_score;
+        this.shapes.numbers.set_string(this.opponent_score.toString().padStart(3, '0'), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform1, this.materials.nums_texture);
 
         this.shapes.numbers.set_string(Math.ceil(Math.max(this.num_left/2, 0)).toString(), context.context);
