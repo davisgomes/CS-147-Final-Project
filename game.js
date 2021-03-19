@@ -52,6 +52,8 @@ export class Game extends Simulation {
         this.program_state;
         this.sway = 0;
         this.thrown = false;
+        this.player_turn = false;
+        this.players_turn_over = 0;
         this.colliders = [
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(3), leeway: .2},
             {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(6), leeway: .1},
@@ -116,7 +118,7 @@ export class Game extends Simulation {
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
         this.spin_angle = 0;
-        this.num_left = 3;
+        this.num_left = 6;
         this.thrown = false;
         this.score = 0;
         this.board_center = 1.03
@@ -128,7 +130,7 @@ export class Game extends Simulation {
 
     make_control_panel() {
         this.key_triggered_button("Throw dart", ["j"], () => {
-            if (this.num_left >= 0) this.thrown = true
+            if (this.num_left >= 0 && this.player_turn) this.thrown = true
         });
         this.new_line();
         this.key_triggered_button("Increase power", ["u"], () => {
@@ -243,11 +245,11 @@ export class Game extends Simulation {
         let model_transform2 = model_transform
             .times(Mat4.translation(1.47, -2.22, 0.1))
             .times(Mat4.scale(digit_size, digit_size, digit_size));
-
+        // console.log(this.score);
         this.shapes.numbers.set_string(this.score.toString().padStart(3, '0'), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform1, this.materials.nums_texture);
 
-        this.shapes.numbers.set_string(Math.max(this.num_left, 0).toString(), context.context);
+        this.shapes.numbers.set_string(Math.ceil(Math.max(this.num_left/2, 0)).toString(), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform2, this.materials.nums_texture);
     }
 
@@ -311,7 +313,7 @@ export class Game extends Simulation {
         // scene should do to its bodies every frame -- including applying forces.
         // Generate moving bodies:
         let model_transform = Mat4.identity();
-        let dart_index = 83 + (3 - this.num_left)
+        let dart_index = 83 + (6 - this.num_left)
 
         //build wall
         if (this.bodies.length === 0) {
@@ -324,28 +326,39 @@ export class Game extends Simulation {
             this.construct_board_elements()
         }
         // build dart
-        if (this.bodies.length === dart_index && this.num_left >= 0) {
+        if (this.bodies.length === dart_index && this.num_left > 0) {
+            console.log(this.num_left);
             this.bodies.push(new Body(this.shapes.dart, this.materials.dart_texture, vec3(.3, .3, .1))
                 .emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
                     vec3(0, 0, 0), 0));
         }
 
-        if (this.thrown && this.bodies[dart_index].linear_velocity[2] === 0) {
-            this.bodies[dart_index].linear_velocity[0] = -this.sway;
-            this.bodies[dart_index].linear_velocity[1] = this.power_scale;
-            this.bodies[dart_index].linear_velocity[2] = -3;
-        } else if(this.thrown) {
-            this.bodies[dart_index].linear_velocity[1] += dt * -1;
-        } else if (this.num_left >= 0 && this.bodies[dart_index].linear_velocity[2] === 0){
-            this.bodies[dart_index].emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0))
-                    .times(Mat4.rotation(this.sway, 0, 1, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
-                vec3(0, 0, 0), 0)
+        if (this.num_left > 0) {
+            if (this.player_turn) {
+                if (this.thrown && this.bodies[dart_index].linear_velocity[2] === 0) {
+                    this.bodies[dart_index].linear_velocity[0] = -this.sway;
+                    this.bodies[dart_index].linear_velocity[1] = this.power_scale;
+                    this.bodies[dart_index].linear_velocity[2] = -3;
+                } else if (this.thrown) {
+                    this.bodies[dart_index].linear_velocity[1] += dt * -1;
+                } else if (this.num_left >= 0 && this.bodies[dart_index].linear_velocity[2] === 0) {
+                    this.bodies[dart_index].emplace(Mat4.translation(...vec3(0, .5, 8)).times(Mat4.rotation(Math.PI / 6, 1, 0, 0))
+                            .times(Mat4.rotation(this.sway, 0, 1, 0)).times(Mat4.rotation(Math.PI, 0, 1, 0)),
+                        vec3(0, 0, 0), 0)
+                }
+            } else {
+                if ((this.program_state.animation_time - this.players_turn_over) > 1990 && (this.program_state.animation_time - this.players_turn_over) < 2010) {
+                    this.bodies[dart_index].linear_velocity[0] = -1 + Math.random() * (Math.PI / 4);
+                    this.bodies[dart_index].linear_velocity[1] = 1 + Math.random();
+                    this.bodies[dart_index].linear_velocity[2] = -3;
+                } else if ((this.program_state.animation_time - this.players_turn_over) > 2000) {
+                    this.bodies[dart_index].linear_velocity[1] += dt * -1;
+                }
+            }
         }
-
 
         // Sometimes we delete some so they can re-generate as new ones:
         // this.bodies = this.bodies.filter(b => (Math.random() > .01) || b.linear_velocity.norm() > 1);
-
 
         // Loop through all bodies (call each "a"):
         if (this.bodies[dart_index]) {
@@ -357,8 +370,6 @@ export class Game extends Simulation {
                 return;
 
             // *** Collision process is here ***
-            // Loop through all bodies again (call each "b"):
-            //for (let b of this.bodies) {
             // Pass the two bodies and the collision shape to check_if_colliding():
 
             for (let i = 0; i < dart_index; i++) {
@@ -373,8 +384,14 @@ export class Game extends Simulation {
                 // velocity so they don't inter-penetrate any further.
                 a.linear_velocity = vec3(0, 0, 0);
                 a.angular_velocity = 0;
-                this.thrown = false;
                 this.num_left -= 1;
+                if (this.player_turn) {
+                    this.thrown = false;
+                    this.players_turn_over = this.program_state.animation_time;
+                    this.player_turn = false;
+                } else {
+                    this.player_turn = true;
+                }
 
                 if (i !== 0) {
                     this.increase_score(this.board_values[i - 1]);
@@ -432,6 +449,6 @@ export class Game extends Simulation {
 
     reset() {
         this.score = 0
-        this.num_left = 3
+        this.num_left = 6
     }
 }
