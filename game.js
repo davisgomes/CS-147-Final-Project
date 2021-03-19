@@ -120,7 +120,8 @@ export class Game extends Simulation {
         this.spin_angle = 0;
         this.num_left = 6;
         this.thrown = false;
-        this.score = 0;
+        this.player_score = 0;
+        this.opponent_score = 0;
         this.board_center = 1.03
         this.board_values = []
         this.power_scale = 1;
@@ -238,15 +239,22 @@ export class Game extends Simulation {
 
     draw_score_and_darts_left(context, program_state, model_transform) {
         let digit_size = 0.3;
+        let model_transform0 = model_transform
+            .times(Mat4.translation(-1.7, -2., 0.1))
+            .times(Mat4.scale(digit_size, digit_size/2, digit_size));
         let model_transform1 = model_transform
-            .times(Mat4.translation(-1.7, -2.22, 0.1))
-            .times(Mat4.scale(digit_size, digit_size, digit_size));
-
+            .times(Mat4.translation(-1.7, -2.4, 0.1))
+            .times(Mat4.scale(digit_size, digit_size/2, digit_size));
         let model_transform2 = model_transform
             .times(Mat4.translation(1.47, -2.22, 0.1))
             .times(Mat4.scale(digit_size, digit_size, digit_size));
-        // console.log(this.score);
-        this.shapes.numbers.set_string(this.score.toString().padStart(3, '0'), context.context);
+
+        this.opponent_score = this.opponent_score;
+        this.shapes.numbers.set_string(this.opponent_score.toString().padStart(3, '0'), context.context);
+        this.shapes.numbers.draw(context, program_state, model_transform0, this.materials.nums_texture);
+
+        this.player_score = this.player_score;
+        this.shapes.numbers.set_string(this.player_score.toString().padStart(3, '0'), context.context);
         this.shapes.numbers.draw(context, program_state, model_transform1, this.materials.nums_texture);
 
         this.shapes.numbers.set_string(Math.ceil(Math.max(this.num_left/2, 0)).toString(), context.context);
@@ -348,7 +356,7 @@ export class Game extends Simulation {
                 }
             } else {
                 if ((this.program_state.animation_time - this.players_turn_over) > 1990 && (this.program_state.animation_time - this.players_turn_over) < 2010) {
-                    this.bodies[dart_index].linear_velocity[0] = -1 + Math.random() * (Math.PI / 4);
+                    this.bodies[dart_index].linear_velocity[0] = -(Math.PI/12) + Math.random() * (Math.PI / 6);
                     this.bodies[dart_index].linear_velocity[1] = 1 + Math.random();
                     this.bodies[dart_index].linear_velocity[2] = -3;
                 } else if ((this.program_state.animation_time - this.players_turn_over) > 2000) {
@@ -444,11 +452,15 @@ export class Game extends Simulation {
     }
 
     increase_score(num_points) {
-        this.score += num_points;
+        if (this.player_turn) {
+            this.player_score += num_points;
+        } else {
+            this.opponent_score += num_points;
+        }
     }
 
     reset() {
-        this.score = 0
+        this.player_score = 0
         this.num_left = 6
     }
 }
