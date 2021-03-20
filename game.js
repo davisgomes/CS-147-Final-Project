@@ -218,7 +218,7 @@ export class Game extends Simulation {
         let scale_size = 0.1;
         let start_pos = 1.3
         let span = -0.15
-        for (let i = 0; i < this.num_left; i++) {
+        for (let i = 0; i < Math.ceil(this.num_left/2); i++) {
             let model_transformi = model_transform
                 .times(Mat4.translation(start_pos + i * span, -0.4, 10))
                 .times(Mat4.scale(scale_size, scale_size, scale_size))
